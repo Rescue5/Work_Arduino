@@ -59,12 +59,12 @@ void setup() {
   Serial.begin(115200);
   Serial.println("Start config...");
 
-  scale1.begin(3, 4);
-  scale1.set_scale(260);
+  scale1.begin(4, 3);
+  scale1.set_scale(108);
   scale1.tare();
 
-  scale2.begin(5, 6);
-  scale2.set_scale(260);
+  scale2.begin(6, 5);
+  scale2.set_scale(105);
   scale2.tare();
 
   Serial.println("Tenz configurated");
@@ -181,9 +181,10 @@ void loop() {
 
       // Управление ускорением, поддержанием и торможением
       if (accelerating) {
-        if (currentSpeed < nextSpeedThreshold) {
+        if (currentSpeed < nextSpeedThreshold && currentSpeed < maxThrottle) {
           currentSpeed += 40;
           if (currentSpeed > nextSpeedThreshold) currentSpeed = nextSpeedThreshold;
+          if (currentSpeed >= maxThrottle) currentSpeed = maxThrottle;
           setSpeed(currentSpeed, decelerating);
         } else {
           holdActive = true;
@@ -314,9 +315,11 @@ void maintainFreezeSpeed() {
 
 void setSpeed(int speed, bool deceleratingFlag) {
   dac.setVoltage(speed, false);
-  if (speed % 410 == 0 && !freezeMode) {
+  int scaledSpeed = map(speed, 0, 4095, 1000, 2000);
+  if (scaledSpeed == 1901) scaledSpeed -= 1;
+  if ((speed % 410 == 0 || speed == maxThrottle) && !freezeMode) {
     Serial.print("Speed set to: ");
-    Serial.println(speed);
+    Serial.println(scaledSpeed);
   }
 }
 
