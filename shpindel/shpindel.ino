@@ -74,8 +74,12 @@ void setup() {
 
   Serial.println("Hall configurated");
 
-    dac.begin(DAC_ADDRESS);      // Инициализация ЦАП
-    dac.setVoltage(0, false);
+  dac.begin(DAC_ADDRESS);      // Инициализация ЦАП
+  delay(1000);
+  dac.setVoltage(0, false);
+  dac.setVoltage(0, true);
+  dac.setVoltage(0, false);
+  dac.setVoltage(0, true);
   
   Serial.println("System Ready. Use START to begin test or STOP for emergency stop.");
 }
