@@ -13,8 +13,8 @@ const float REFERENCE_VOLTAGE = 5.0;
 const float MAX_INPUT_VOLTAGE = 25.0;
 const float DIVIDER_RATIO = MAX_INPUT_VOLTAGE / REFERENCE_VOLTAGE;
 
-const int ledPins[6] = {4, 5, 6, 7, 8, 9}; // Светодиоды для выбора KV
-const int resultLedPins[3] = {10, 11, 12}; // Светодиоды для результата
+const int ledPins[6] = {7, 8, 9, 10, 11, 12}; // Светодиоды для выбора KV
+const int resultLedPins[3] = {4, 5, 6}; // Светодиоды для результата
 const int KV[6] = {300, 600, 900, 1200, 1500, 1800};
 int selectedKVled = 0;
 int selectedKV = 300;

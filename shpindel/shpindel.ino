@@ -5,10 +5,8 @@
 
 HX711 scale1;
 HX711 scale2;
-HX711 scale3;
 
 #include <Adafruit_MCP4725.h>
-
 // Создаем экземпляр ЦАП
 Adafruit_MCP4725 dac;
 
@@ -18,10 +16,10 @@ Adafruit_MCP4725 dac;
 float Moment = 0;
 
 #define HALL_PIN_D0 2
-#define MAGNET_COUNT 7
+#define MAGNET_COUNT 2
 
 // Добавляем изменяемую переменную
-volatile int PULSE_THRESHOLD = 70;
+volatile int PULSE_THRESHOLD = 20;
 volatile double MOMENT_TENZ = 1.0;
 volatile double THRUST_TENZ = 1.0;
 
@@ -211,7 +209,7 @@ void loop() {
 
       if (decelerating) {
         if (currentSpeed > minThrottle) {
-          currentSpeed -= 120;
+          currentSpeed -= 60;
           if (currentSpeed < minThrottle) currentSpeed = minThrottle;
           setSpeed(currentSpeed, decelerating);
         } else {
@@ -320,7 +318,7 @@ void maintainFreezeSpeed() {
 void setSpeed(int speed, bool deceleratingFlag) {
   dac.setVoltage(speed, false);
   int scaledSpeed = map(speed, 0, 4095, 1000, 2000);
-  if (scaledSpeed == 1901) scaledSpeed -= 1;
+  scaledSpeed = round(scaledSpeed / 100.0) * 100;
   if ((speed % 410 == 0 || speed == maxThrottle) && !freezeMode) {
     Serial.print("Speed set to: ");
     Serial.println(scaledSpeed);
