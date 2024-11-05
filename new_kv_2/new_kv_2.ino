@@ -3,10 +3,11 @@
 #include <Adafruit_SSD1306.h>
 #include <Servo.h>
 
-#define HALL_PIN_D0 2 
-#define VOLTAGE_PIN A1
-#define CURRENT_PIN A2
-#define BUTTON_PIN 3
+#define HALL_PIN_D0 2
+#define VOLTAGE_PIN A6
+#define CURRENT_PIN A5
+#define BUTTON_PIN_1 3
+#define BUTTON_PIN_2 A2
 
 #define MAGNET_COUNT 7
 const float REFERENCE_VOLTAGE = 5.0;
@@ -14,10 +15,12 @@ const float MAX_INPUT_VOLTAGE = 25.0;
 const float DIVIDER_RATIO = MAX_INPUT_VOLTAGE / REFERENCE_VOLTAGE;
 
 const int ledPins[6] = {7, 8, 9, 10, 11, 12}; // Светодиоды для выбора KV
-const int resultLedPins[3] = {4, 5, 6}; // Светодиоды для результата
-const int KV[6] = {300, 600, 900, 1200, 1500, 1800};
+const int resultLedPins[3] = {6, 5, 4}; // Светодиоды для результата
+const int KV[6] = {405, 601, 760, 857, 1080, 1270};
 int selectedKVled = 0;
 int selectedKV = 300;
+
+bool testEnds = false;
 
 volatile int pulseCount = 0;
 unsigned long previousMillis = 0;
@@ -41,141 +44,141 @@ int minThrottle = 1000;
 int maxThrottle = 2000;
 int currentThrottle = minThrottle;
 
+unsigned long ledPreviousMillis = 0; // Переменная для управления миганием светодиода
+
+bool ledState = LOW; // начальное состояние светодиода
+
 bool testRunning = false;
 unsigned long testStartTime = 0;
-const unsigned long accelTime = 10000; // Время ускорения
+const unsigned long accelTime = 5000; // Время ускорения
 const unsigned long holdTime = 8000;   // Время удержания
-const unsigned long decelTime = 5000;  // Время замедления
+const unsigned long decelTime = 3000;  // Время замедления
 
 // Переменные для накопления тока в период удержания
 float holdTimeCurrentSum = 0.0;
 int holdTimeCurrentCount = 0;
 bool isHoldTimeActive = false;
 
-// Переменные для управления кнопкой
-unsigned long buttonPressStart = 0;
-const unsigned long longPressTime = 2000; // Время длительного нажатия
-
 void setup() {
-  Serial.begin(9600);
+  //digitalWrite(resultLedPins[2], HIGH);
+  //digitalWrite(resultLedPins[1], HIGH);
+  //digitalWrite(resultLedPins[0], HIGH);
+  Serial.begin(115200);
   esc.attach(escPin);
   esc.writeMicroseconds(minThrottle);
 
-  pinMode(BUTTON_PIN, INPUT_PULLUP);
+  pinMode(BUTTON_PIN_1, INPUT_PULLUP);
+  pinMode(BUTTON_PIN_2, INPUT_PULLUP);
 
   pinMode(HALL_PIN_D0, INPUT);
   attachInterrupt(digitalPinToInterrupt(HALL_PIN_D0), countPulse, RISING);
 
-  Serial.println("Система запущена. Нажмите и удерживайте кнопку для начала теста.");
+  Serial.println("Система запущена. Нажмите кнопку для запуска теста или выбора KV.");
 }
 
 void loop() {
   unsigned long currentMillis = millis();
 
-  // Проверка кнопки
-  if (digitalRead(BUTTON_PIN) == LOW) {
-    if (buttonPressStart == 0) {
-      buttonPressStart = currentMillis; // Запоминаем время нажатия
-    } else if (currentMillis - buttonPressStart >= longPressTime) {
-      // Долгое нажатие
-      if (!testRunning) {
-        // Запуск теста
-        testRunning = true;
-        testStartTime = currentMillis;
-
-        // Сброс переменных удержания
-        holdTimeCurrentSum = 0.0;
-        holdTimeCurrentCount = 0;
-        isHoldTimeActive = false;
-
-        Serial.println("Тест запущен.");
-      }
+  // Мигающий светодиод, если rpm <= 100 и тест не завершен
+  if (rpm <= 100 && !testEnds) {
+    if (currentMillis - ledPreviousMillis >= 500) { // Используем ledPreviousMillis только для светодиода
+      ledPreviousMillis = currentMillis;
+      ledState = !ledState; // Инвертируем состояние
+      digitalWrite(resultLedPins[0], ledState); // Записываем новое состояние
     }
-  } else {
-    if (buttonPressStart != 0) {
-      // Кнопка отпущена
-      unsigned long pressDuration = currentMillis - buttonPressStart;
-      buttonPressStart = 0; // Сбрасываем время нажатия
+  } else if (rpm > 100 && !testEnds) {
+    // Если rpm > 100 или тест завершен, выключаем светодиод
+    digitalWrite(resultLedPins[0], LOW);
+    ledState = LOW; // Сбрасываем состояние
+  }
 
-      if (pressDuration < longPressTime) {
-        // Короткое нажатие — переключение KV
-        if (testRunning){
-            Serial.println("Тест остановлен.");
-            testRunning = false; // Остановка теста
-        } else{
-            Serial.println("Переключение KV.");
-            selectedKVled = (selectedKVled + 1) % 6;
-            selectedKV = KV[selectedKVled];
-            for (int i = 0; i < 6; i++) {
-            digitalWrite(ledPins[i], i == selectedKVled ? HIGH : LOW);
-            Serial.print("Текущее значение KV: ");
-            Serial.println(selectedKV);
-        }
-
-        }
-        
+  // Нажатие кнопки для выбора KV
+  if (digitalRead(BUTTON_PIN_2) == LOW) {
+    delay(400); // Задержка для антидребезга
+    if (!testRunning) { // Переключение только если тест не запущен
+      selectedKVled = (selectedKVled + 1) % 6;
+      selectedKV = KV[selectedKVled];
+      for (int i = 0; i < 6; i++) {
+        digitalWrite(ledPins[i], i == selectedKVled ? HIGH : LOW);
       }
+      Serial.print("Текущее значение KV: ");
+      Serial.println(selectedKV);
+    }
+  }
+
+  // Нажатие кнопки для запуска или остановки теста
+  if (digitalRead(BUTTON_PIN_1) == LOW) {
+    delay(500); // Задержка для антидребезга
+
+    maxKV=0;
+
+    digitalWrite(resultLedPins[2], LOW);
+    digitalWrite(resultLedPins[1], LOW);
+    digitalWrite(resultLedPins[0], LOW);
+    
+    if (!testRunning) {
+      // Запуск теста
+      testRunning = true;
+      testEnds = false;
+      testStartTime = currentMillis;
+
+      holdTimeCurrentSum = 0.0;
+      holdTimeCurrentCount = 0;
+      isHoldTimeActive = false;
+
+      Serial.println("Тест запущен.");
+    } else {
+      // Остановка теста
+      testRunning = false;
+      Serial.println("Тест прерван пользователем.");
     }
   }
 
   if (testRunning) {
     unsigned long elapsedTime = currentMillis - testStartTime;
+    //Serial.println(rpm);
 
     if (elapsedTime < accelTime) {
-      // Ускорение
       currentThrottle = map(elapsedTime, 0, accelTime, minThrottle, maxThrottle);
     } else if (elapsedTime < accelTime + holdTime) {
-      // Удержание максимальной скорости
       currentThrottle = maxThrottle;
-
-      // Включаем флаг удержания
       isHoldTimeActive = true;
-
     } else if (elapsedTime < accelTime + holdTime + decelTime) {
-      // Замедление
       currentThrottle = map(elapsedTime, accelTime + holdTime, accelTime + holdTime + decelTime, maxThrottle, minThrottle);
-
-      // Фаза удержания завершена
       isHoldTimeActive = false;
-
     } else {
-      // Завершение теста
       testRunning = false;
-
-      // Выводим средний ток за период удержания
       if (holdTimeCurrentCount > 0) {
         maxKV_AverageCurrent = holdTimeCurrentSum / holdTimeCurrentCount;
       }
-        // Сравнение maxKV с выбранным KV
-        float difference = abs((maxKV - selectedKV) / selectedKV) * 100;
-
-        if (difference <= 5) {
-            digitalWrite(resultLedPins[0], HIGH); // Менее 5%
-            Serial.println("Разница менее 5%");
-        } else if (difference <= 10) {
-            digitalWrite(resultLedPins[1], HIGH); // Менее 10%
-            Serial.println("Разница менее 10%");
-        } else {
-            digitalWrite(resultLedPins[2], HIGH); // Более 10%
-            Serial.println("Разница более 10%");
-        }
-
+      testEnds = true;
+      float difference = abs((maxKV - selectedKV) / selectedKV) * 100;
+      Serial.println(maxKV);
+      Serial.println(selectedKV);
+      Serial.println(difference);
+      if (difference <= 2) {
+          digitalWrite(resultLedPins[2], HIGH);
+          Serial.println("Разница менее 2%");
+      } else if (difference <= 5) {
+          digitalWrite(resultLedPins[1], HIGH);
+          Serial.println("Разница менее 5%");
+      } else {
+          digitalWrite(resultLedPins[0], HIGH);
+          Serial.println("Разница более 5%");
+      }
       Serial.println("Тест завершен.");
     }
   } else {
-    // Остановка двигателя, если тест не запущен
     if (currentThrottle > minThrottle) {
-      currentThrottle -= 10;
+      currentThrottle -= 50;
       delay(10);
     }
   }
 
-  // Код для управления ESC
   esc.writeMicroseconds(currentThrottle);
-  Serial.println(currentThrottle);
-  Serial.println(pulseCount);
+  //Serial.println(currentThrottle);
 
-  // Код для измерений и дисплея
+  // Измерения
   if (currentMillis - previousMillis >= interval) {
     previousMillis = currentMillis;
     noInterrupts();
@@ -184,29 +187,26 @@ void loop() {
     interrupts();
 
     float revolutions = pulses / float(MAGNET_COUNT);
-    rpm = revolutions * 60 * 0.9859;
+    rpm = revolutions * 60 *0.9885;
 
     int sensorValue = analogRead(VOLTAGE_PIN);
-    float measuredVoltage = sensorValue * (REFERENCE_VOLTAGE / 1020.0);
+    float measuredVoltage = sensorValue * (REFERENCE_VOLTAGE / 962.0);
     voltage = measuredVoltage * DIVIDER_RATIO;
 
     int currentSensorValue = analogRead(CURRENT_PIN);
     float voltageAtCurrentPin = currentSensorValue * (REFERENCE_VOLTAGE / 1023.0);
     current = (voltageAtCurrentPin - 2.5) / 0.066;
 
-    // Считаем средний ток
     totalCurrent -= currentReadings[currentReadingIndex];
     currentReadings[currentReadingIndex] = current;
     totalCurrent += current;
     currentReadingIndex = (currentReadingIndex + 1) % numReadings;
     averageCurrent = totalCurrent / numReadings;
 
-    // Накопление данных тока в фазе удержания
     if (isHoldTimeActive) {
       holdTimeCurrentSum += averageCurrent;
       holdTimeCurrentCount++;
 
-      // Обновление maxKV в период удержания
       if (voltage != 0) {
         float kv = rpm / voltage;
         if (kv > maxKV) {
@@ -216,18 +216,18 @@ void loop() {
     }
   }
 
-Serial.print("RPM: ");
-Serial.println(rpm);
-Serial.print("V: ");
-Serial.println(voltage);
-Serial.print("Avg. A: ");
-Serial.println(averageCurrent * -1);
-
-Serial.print("KVmax:");
-Serial.println(maxKV, 0);
-Serial.print("Akv:");
-Serial.println(maxKV_AverageCurrent * -1);
-
+    // Serial.print("Speed: ");
+    // //Serial.print(Speed);
+    // Serial.print("\t");
+    Serial.print("RPM: ");
+    Serial.print(rpm);
+    Serial.print("\t");
+    Serial.print("Current: ");
+    Serial.print(current);
+    Serial.print("\t");
+    Serial.print("Voltage: ");
+    Serial.println(voltage);
+    delay(100);
 }
 
 void countPulse() {

@@ -33,7 +33,7 @@ float rpm = 0;
 bool freezeMode = false;  // Флаг для режима FREEZE
 
 Servo esc;
-int escPin = A1;
+int escPin = A5;
 int minThrottle = 1000;
 int maxThrottle = 2000;
 int currentSpeed = minThrottle;
@@ -80,6 +80,14 @@ void setup() {
 
 void loop() {
   unsigned long currentMillis = millis();
+  
+  //   if (pulseCount > 0 && (currentMillis - lastPulseTime) > TIME_THRESHOLD) {
+  //   // Если прошло слишком много времени с последнего импульса
+  //   pulseCount = 0;  // Сброс счётчика импульсов
+  //   rpm = 0;  // Устанавливаем RPM в 0, так как мотор не вращается
+  //   rpmUpdated = true;  // Флаг для обработки обновления RPM
+  //   Serial.println("Долгий простой, RPM сброшены.");
+  // }
   
   // Проверка команд через Serial
   if (Serial.available() > 0) {

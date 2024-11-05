@@ -1,68 +1,20 @@
-#include <avr/sleep.h>
-
-// Пин подключения датчика Холла
-#define HALL_PIN_D0 2
-// Количество импульсов для расчета
-#define PULSE_THRESHOLD 70
-// Количество оборотов, соответствующих PULSE_THRESHOLD
-#define REVS_PER_PULSE_THRESHOLD 10
-// Время для сброса (в миллисекундах)
-const unsigned long TIME_THRESHOLD = 800; // 0.8 секунды
-
-volatile int pulseCount = 0; // Переменная для подсчёта импульсов
-unsigned long lastTime = 0; // Время последнего считывания
-unsigned long startTime = 0; // Время начала накопления импульсов
-float rpm = 0;
+int sensorPin = 2;  // Пин для подключения оптического датчика
+int sensorValue = 0;  // Переменная для хранения состояния датчика
 
 void setup() {
-  Serial.begin(115200);
-  Serial.println("Запуск программы расчёта оборотов двигателя...");
-
-  pinMode(HALL_PIN_D0, INPUT);
-  attachInterrupt(digitalPinToInterrupt(HALL_PIN_D0), countPulse, RISING);
+  Serial.begin(115200);  // Инициализация Serial для вывода данных
+  pinMode(sensorPin, INPUT);  // Устанавливаем пин датчика как вход
 }
 
 void loop() {
-  //Serial.println(rpm, 2);
+  sensorValue = digitalRead(sensorPin);  // Чтение состояния датчика
 
-  unsigned long currentMillis = millis();
-
-  // Проверяем, превышает ли время накопления импульсов 0.8 секунды
-  if (pulseCount > 0 && (currentMillis - startTime >= TIME_THRESHOLD)) {
-    // Сбрасываем количество импульсов и RPM
-    pulseCount = 0;
-    rpm = 0;
-    //Serial.println("Импульсы сброшены. Двигатель, возможно, стоит.");
+  // Вывод состояния в Serial Monitor
+  if (sensorValue == HIGH) {
+    Serial.println(1);  // Если видит объект, выводим 1
+  } else {
+    Serial.println(0);  // Если не видит, выводим 0
   }
-}
-
-// Прерывание для подсчёта импульсов с датчика Холла
-void countPulse() {
-  // Если это первый импульс, запоминаем время начала накопления
-  if (pulseCount == 0) {
-    startTime = millis();
-  }
-
-  pulseCount++;
-
-  // Если достигнут порог импульсов
-  if (pulseCount >= PULSE_THRESHOLD) {
-    // Расчет времени, когда были получены эти импульсы
-    unsigned long currentTime = millis();
-    unsigned long timeForPulses = currentTime - startTime;
-
-    // Расчет оборотов в минуту
-    if (timeForPulses > 0) {
-      // RPM = (количество оборотов * 60) / (время в секундах)
-      rpm = (REVS_PER_PULSE_THRESHOLD * 60.0) / (timeForPulses / 1000.0);
-
-      // Вывод RPM в последовательный порт
-      Serial.print("Текущие обороты (RPM): ");
-      Serial.println(rpm, 2); // Вывод с двумя знаками после запятой
-    }
-
-    // Сбрасываем количество импульсов и время
-    pulseCount = 0;
-    startTime = 0; // Сбрасываем время начала накопления
-  }
+  
+  delay(100);  // Задержка в 500 мс для удобного наблюдения за изменениями
 }

@@ -46,9 +46,9 @@ int currentThrottle = minThrottle;
 
 bool testRunning = false;
 unsigned long testStartTime = 0;
-const unsigned long accelTime = 10000; // Время ускорения
+const unsigned long accelTime = 5000; // Время ускорения
 const unsigned long holdTime = 8000;   // Время удержания
-const unsigned long decelTime = 5000;  // Время замедления
+const unsigned long decelTime = 3000;  // Время замедления
 
 // Переменные для накопления тока в период удержания
 float holdTimeCurrentSum = 0.0;
@@ -56,11 +56,11 @@ int holdTimeCurrentCount = 0;
 bool isHoldTimeActive = false;
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
   esc.attach(escPin);
   esc.writeMicroseconds(minThrottle);
 
-   Инициализация дисплея
+   //Инициализация дисплея
    if (!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
     Serial.println(F("Ошибка инициализации дисплея SSD1306"));
      for (;;);  // Бесконечный цикл в случае ошибки
@@ -140,7 +140,7 @@ void loop() {
   } else {
     // Остановка двигателя, если тест не запущен
     if (currentThrottle > minThrottle) {
-      currentThrottle -= 10;
+      currentThrottle -= 50;
       delay(10);
     }
   }
@@ -148,7 +148,7 @@ void loop() {
   // Код для управления ESC
   esc.writeMicroseconds(currentThrottle);
   Serial.println(currentThrottle);
-  Serial.println(pulseCount);
+  //Serial.println(pulseCount);
 
   // Код для измерений и дисплея
   if (currentMillis - previousMillis >= interval) {
@@ -159,10 +159,10 @@ void loop() {
     interrupts();
 
     float revolutions = pulses / float(MAGNET_COUNT);
-    rpm = revolutions * 60 * 0.9859;
+    rpm = revolutions * 60 * 0.9885;
 
     int sensorValue = analogRead(VOLTAGE_PIN);
-    float measuredVoltage = sensorValue * (REFERENCE_VOLTAGE / 1020.0);
+    float measuredVoltage = sensorValue * (REFERENCE_VOLTAGE / 1020.0); //1020
     voltage = measuredVoltage * DIVIDER_RATIO;
 
     int currentSensorValue = analogRead(CURRENT_PIN);
@@ -190,8 +190,19 @@ void loop() {
       }
     }
   }
+    // Serial.print("Speed: ");
+    // Serial.print(Speed);
+    // Serial.print("\t");
+    Serial.print("RPM: ");
+    Serial.print(rpm);
+    Serial.print("\t");
+    Serial.print("Current: ");
+    Serial.print(current);
+    Serial.print("\t");
+    Serial.print("Voltage: ");
+    Serial.println(voltage);
 
-   Отображение на дисплее
+   // Отображение на дисплее
    display.clearDisplay();
    display.setCursor(0, 0);
    display.setTextSize(1);
@@ -210,6 +221,8 @@ void loop() {
    display.println(maxKV_AverageCurrent * -1);
 
    display.display();
+
+   // delay(100);
 }
 
 void countPulse() {

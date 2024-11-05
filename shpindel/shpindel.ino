@@ -10,6 +10,8 @@ HX711 scale2;
 // Создаем экземпляр ЦАП
 Adafruit_MCP4725 dac;
 
+volatile bool hallSensorState = HIGH;
+
 // Адрес ЦАП (по умолчанию 0x60, может быть 0x61)
 #define DAC_ADDRESS 0x60
 
@@ -83,7 +85,8 @@ void setup() {
 }
 
 void loop() {
-  unsigned long currentMillis = millis();
+    unsigned long currentMillis = millis();
+
   
   // Проверка команд через Serial
   if (Serial.available() > 0) {
@@ -172,7 +175,6 @@ void loop() {
   interrupts();
   
   if (shouldUpdate && testInProgress) {
-    // Вычисление RPM уже произошло в ISR, теперь собираем данные
     processSensorData();
   }
 
@@ -196,7 +198,7 @@ void loop() {
       }
 
       if (holdActive) {
-        if (currentMillis - speedUpdateMillis >= 1000) { // Удержание
+        if (currentMillis - speedUpdateMillis >= 5000) { // Удержание
           holdActive = false;
           if (nextSpeedThreshold < maxThrottle) {
             nextSpeedThreshold += 410;
@@ -247,9 +249,12 @@ void processSensorData() {
   float tyaga = scale2.get_units() * THRUST_TENZ;
   if (tyaga < 80) tyaga = 0;
 
-  if (currentSpeed % 100 == 0 && !freezeMode){
+  int scaledSpeedSer = map(currentSpeed, 0, 4095, 1000, 2000);
+  scaledSpeedSer = round(scaledSpeedSer / 100.0) * 100;
+
+  if (scaledSpeedSer % 100 == 0 && !freezeMode){
     Serial.print("Скорость:");
-    Serial.print(currentSpeed);
+    Serial.print(scaledSpeedSer);
     Serial.print(":Момент:");
     Serial.print(Moment, 4);
     Serial.print(":Тяга:");
@@ -268,15 +273,25 @@ void sendStandInfo() {
 
 // Прерывание для подсчёта импульсов с датчика Холла
 void countPulse() {
-  // Если это первый импульс, запоминаем время начала накопления
-  if (pulseCount == 0) {
-    startTime = millis();
+  bool currentSensorState = digitalRead(HALL_PIN_D0); // Читаем текущее состояние датчика
+  // Проверяем, произошло ли изменение состояния
+  if (currentSensorState == LOW && hallSensorState == HIGH) {
+    //Serial.println("snus");
+    // Если это первый импульс, запоминаем время начала накопления
+    if (pulseCount == 1) {
+      startTime = millis();
+    }
+
+    pulseCount++;
+
+    // Обновляем состояние датчика
+    hallSensorState = LOW;
+  } else if (currentSensorState == HIGH) {
+    // Если состояние HIGH, обновляем переменную состояния
+    hallSensorState = HIGH;
   }
-
-  pulseCount++;
-
   // Если достигнут порог импульсов
-  if (pulseCount >= PULSE_THRESHOLD) { // Изменение
+  if (pulseCount >= PULSE_THRESHOLD) {
     // Расчет времени, когда были получены эти импульсы
     unsigned long currentTime = millis();
     unsigned long timeForPulses = currentTime - startTime;
