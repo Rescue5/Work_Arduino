@@ -12,7 +12,7 @@
 // Создаем объект дисплея
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
-#define HALL_PIN_D0 9 
+#define HALL_PIN_D0 2
 #define VOLTAGE_PIN A1
 #define CURRENT_PIN A2
 #define BUTTON_PIN 3
@@ -86,6 +86,7 @@ void loop() {
   // Проверка кнопки
   if (digitalRead(BUTTON_PIN) == LOW) {
     delay(50); // Дебаунсинг
+    maxKV = 0;
     if (digitalRead(BUTTON_PIN) == LOW) {
       while (digitalRead(BUTTON_PIN) == LOW); // Ожидание отпускания кнопки
       if (testRunning) {
@@ -159,15 +160,15 @@ void loop() {
     interrupts();
 
     float revolutions = pulses / float(MAGNET_COUNT);
-    rpm = revolutions * 60 * 0.9885;
+    rpm = revolutions * 60 * 0.9885 * 0.968;
 
     int sensorValue = analogRead(VOLTAGE_PIN);
-    float measuredVoltage = sensorValue * (REFERENCE_VOLTAGE / 1020.0); //1020
-    voltage = measuredVoltage * DIVIDER_RATIO;
+    float measuredVoltage = sensorValue * (REFERENCE_VOLTAGE / 1009.0); //1020
+    voltage = measuredVoltage * DIVIDER_RATIO * 0.97;
 
     int currentSensorValue = analogRead(CURRENT_PIN);
     float voltageAtCurrentPin = currentSensorValue * (REFERENCE_VOLTAGE / 1023.0);
-    current = (voltageAtCurrentPin - 2.5) / 0.066;
+    current = (voltageAtCurrentPin - 2.5) / 0.066 * -1;
 
     // Считаем средний ток
     totalCurrent -= currentReadings[currentReadingIndex];
@@ -202,25 +203,25 @@ void loop() {
     Serial.print("Voltage: ");
     Serial.println(voltage);
 
-   // Отображение на дисплее
-   display.clearDisplay();
-   display.setCursor(0, 0);
-   display.setTextSize(1);
-   display.print("RPM: ");
-   display.println(rpm);
-   display.print("V: ");
-   display.println(voltage);
-   display.print("Avg. A: ");
-   display.println(averageCurrent * -1);
+    // Отображение на дисплее
+    display.clearDisplay();
+    display.setCursor(0, 0);
+    display.setTextSize(1);
+    display.print("RPM: ");
+    display.println(rpm);
+    display.print("V: ");
+    display.println(voltage);
+    display.print("Avg. A: ");
+    display.println(averageCurrent * -1);
 
-   display.setTextSize(2);
-   display.setCursor(0, 30);
-   display.print("KVmax:");
-   display.println(maxKV, 0);
-   display.print("Akv:");
-   display.println(maxKV_AverageCurrent * -1);
+    display.setTextSize(2);
+    display.setCursor(0, 30);
+    display.print("KVmax:");
+    display.println(maxKV, 0);
+    display.print("Akv:");
+    display.println(maxKV_AverageCurrent * -1);
 
-   display.display();
+    display.display();
 
    // delay(100);
 }

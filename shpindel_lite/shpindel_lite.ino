@@ -1,13 +1,29 @@
 #include <Wire.h>
 #include "HX711.h"
 
+
+
+
+// Переменные для настройки
+int moment_scale = 1;   // Коэффициент для расчета момента (По умолчанию 1)
+int rpm_scale = 1;      // Коэффициент для расчета оборотов (По умолчанию 1)
+int thrust_scale = 1;   // Коэффициент для расчета тяги (По умолчанию 1)
+
+
+
+
 HX711 scale1;
 HX711 scale2;
 
-#define HALL_PIN_D0 2
-
-// Количество магнитов на диске
+#define HALL_PIN_D0 2 
 #define MAGNET_COUNT 2
+
+// Пины для тензодатчиков
+#define TENZ_DOUT_PIN_1 4
+#define TENZ_SCK_PIN_1 3
+#define TENZ_DOUT_PIN_2 8
+#define TENZ_SCK_PIN_2 7
+
 
 volatile int pulseCount = 0;
 unsigned long previousMillis = 0;
@@ -25,11 +41,11 @@ void setup() {
   Serial.println("Start config...");
 
   // Инициализация тензодатчиков
-  scale1.begin(4, 3);
+  scale1.begin(TENZ_DOUT_PIN_1, TENZ_SCK_PIN_1);
   scale1.set_scale(108);
   scale1.tare();
 
-  scale2.begin(8, 7);
+  scale2.begin(TENZ_DOUT_PIN_2, TENZ_SCK_PIN_2);
   scale2.set_scale(105);
   scale2.tare();
   
@@ -70,15 +86,16 @@ void loop() {
       thrust = 0;
     }
 
+    moment = moment * moment_scale;
+    thrust = thrust * thrust_scale;
+    rpm = rpm * rpm_scale;
 
     if ((moment != prevMoment || thrust != prevThrust || rpm != prevRpm) && (moment > 0.001 || thrust >0.005 || rpm>100)){
 
       Serial.print("Момент:");
       Serial.print(moment, 4);  // 4 знака после запятой
-      Serial.print("Кг:");
-      Serial.print(kg);
       Serial.print(":Тяга:");
-      Serial.print(thrust, 4);
+      Serial.print(thrust * thrust_scale, 4);
       Serial.print(":Об/мин:");
       Serial.println(rpm,0);
 

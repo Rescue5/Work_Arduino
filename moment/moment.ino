@@ -33,8 +33,8 @@ float rpm = 0;
 bool freezeMode = false;  // Флаг для режима FREEZE
 
 Servo esc;
-int escPin = A5;
-int minThrottle = 1000;
+int escPin = A1;
+int minThrottle = 800;
 int maxThrottle = 2000;
 int currentSpeed = minThrottle;
 
@@ -134,7 +134,7 @@ void loop() {
       } else { // Добавлено
         Serial.println("Invalid PULSE_THRESHOLD value."); // Добавлено
       } // Добавлено
-    } 
+    }
     // Добавляем обработку команды MOMENT_TENZ_значение
     else if (command.startsWith("MOMENT_TENZ_")) { // Добавлено
       String valueStr = command.substring(strlen("MOMENT_TENZ_")); // Добавлено
@@ -199,10 +199,10 @@ void loop() {
       }
 
       if (holdActive) {
-        if (currentMillis - speedUpdateMillis >= 1000) { // Удержание
+        if (currentMillis - speedUpdateMillis >= 2000) { // Удержание
           holdActive = false;
           if (nextSpeedThreshold < maxThrottle) {
-            nextSpeedThreshold += 100;
+            nextSpeedThreshold += 200;
             accelerating = true;
           } else {
             decelerating = true;
@@ -256,7 +256,7 @@ void processSensorData() {
     res_moment = 0;
   }
   float tyaga = scale3.get_units() * THRUST_TENZ;
-  if (tyaga < 80) tyaga = 0;
+  //if (tyaga < 80) tyaga = 0;
 
   if (currentSpeed % 100 == 0 && !freezeMode){
     Serial.print("Скорость:");
@@ -280,6 +280,7 @@ void sendStandInfo() {
 
 // Прерывание для подсчёта импульсов с датчика Холла
 void countPulse() {
+  //Serial.println("snus");
   // Если это первый импульс, запоминаем время начала накопления
   if (pulseCount == 0) {
     startTime = millis();
@@ -343,7 +344,7 @@ void startTest() {
   accelerating = true;
   decelerating = false;
   holdActive = false;
-  nextSpeedThreshold = minThrottle + 100;
+  nextSpeedThreshold = minThrottle + 200;
   speedUpdateMillis = millis();
 }
 

@@ -15,10 +15,10 @@ const float MAX_INPUT_VOLTAGE = 25.0;
 const float DIVIDER_RATIO = MAX_INPUT_VOLTAGE / REFERENCE_VOLTAGE;
 
 const int ledPins[6] = {7, 8, 9, 10, 11, 12}; // Светодиоды для выбора KV
+const int KV[6] = {474, 601, 736, 857, 1033, 1261};
 const int resultLedPins[3] = {6, 5, 4}; // Светодиоды для результата
-const int KV[6] = {405, 601, 760, 857, 1080, 1270};
 int selectedKVled = 0;
-int selectedKV = 300;
+int selectedKV = 474;
 
 bool testEnds = false;
 
@@ -63,6 +63,8 @@ void setup() {
   //digitalWrite(resultLedPins[2], HIGH);
   //digitalWrite(resultLedPins[1], HIGH);
   //digitalWrite(resultLedPins[0], HIGH);
+  digitalWrite(ledPins[0], HIGH);
+  
   Serial.begin(115200);
   esc.attach(escPin);
   esc.writeMicroseconds(minThrottle);
@@ -80,7 +82,7 @@ void loop() {
   unsigned long currentMillis = millis();
 
   // Мигающий светодиод, если rpm <= 100 и тест не завершен
-  if (rpm <= 100 && !testEnds) {
+  if (rpm <= 1000 && !testEnds) {
     if (currentMillis - ledPreviousMillis >= 500) { // Используем ledPreviousMillis только для светодиода
       ledPreviousMillis = currentMillis;
       ledState = !ledState; // Инвертируем состояние
@@ -187,10 +189,10 @@ void loop() {
     interrupts();
 
     float revolutions = pulses / float(MAGNET_COUNT);
-    rpm = revolutions * 60 *0.9885;
+    rpm = revolutions * 60 *0.9885 * 0.985;
 
     int sensorValue = analogRead(VOLTAGE_PIN);
-    float measuredVoltage = sensorValue * (REFERENCE_VOLTAGE / 962.0);
+    float measuredVoltage = sensorValue * (REFERENCE_VOLTAGE / 965.0);
     voltage = measuredVoltage * DIVIDER_RATIO;
 
     int currentSensorValue = analogRead(CURRENT_PIN);
@@ -216,9 +218,9 @@ void loop() {
     }
   }
 
-    // Serial.print("Speed: ");
-    // //Serial.print(Speed);
-    // Serial.print("\t");
+    Serial.print("Speed: ");
+    Serial.print(currentThrottle);
+    Serial.print("\t");
     Serial.print("RPM: ");
     Serial.print(rpm);
     Serial.print("\t");

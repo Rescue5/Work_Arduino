@@ -12,12 +12,14 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 HX711 scale1;
 HX711 scale2;
+HX711 scale3;
 
 const int numReadings = 10;  // Количество измерений для усреднения
 
 float readings1[numReadings];  // Массив для хранения измерений первого тензодатчика
 float readings2[numReadings];  // Массив для хранения измерений второго тензодатчика
-float Moment = 0;
+float Moment1 = 0;
+float Moment2 = 0;
 
 int readIndex = 0;  // Индекс текущего чтения
 float total1 = 0;   // Сумма измерений для первого тензодатчика
@@ -41,13 +43,17 @@ void setup() {
 
   // Инициализация первого тензодатчика
   scale1.begin(3, 4);
-  scale1.set_scale(850);  // Замените на ваш коэффициент калибровки для кг
+  scale1.set_scale(260);  // Замените на ваш коэффициент калибровки для кг
   scale1.tare();          // Обнуление тары
 
   // Инициализация второго тензодатчика
   scale2.begin(5, 6);
-  scale2.set_scale(109);  // Замените на ваш коэффициент калибровки для кг
+  scale2.set_scale(260);  // Замените на ваш коэффициент калибровки для кг
   scale2.tare();
+
+  scale3.begin(9, 10);
+  scale3.set_scale(218);  // Замените на ваш коэффициент калибровки для кг
+  scale3.tare();
 
   // Инициализация массивов
   for (int thisReading = 0; thisReading < numReadings; thisReading++) {
@@ -88,12 +94,13 @@ void loop() {
   float average2 = (total2 / numReadings);
 
   // Коррекция отрицательных значений
-  if (average1 < 0.080) average1 = 0;
-  if (average2 < 0.080) average2 = 0;
+  // if (average1 < 0.080) average1 = 0;
+  // if (average2 < 0.080) average2 = 0;
 
   // Расчет момента на валу
-  Moment = 2.0566 * average1;
-  if (Moment < 0.0050) Moment = 0;
+  Moment1 = 2.0566 * average1;
+  Moment2 = 2.0566 * average2;
+  // if (Moment < 0.0050) Moment = 0;
   // Получаем текущее время
   unsigned long currentMillis = millis();
 
@@ -109,15 +116,24 @@ void loop() {
     rpm = revolutions * 60;                            // Переводим в обороты за минуту
   }
 
+  float thrust = scale3.get_units() * 0.001;
+
   // Вывод усредненных значений на консоль
   //if (average1 > 0.020 || Moment > 0.010 || (rpm > 300 && rpm < 25000 && average2 > 0.080)) {
-    Serial.print("Момент: ");
+    Serial.print("Момент1: ");
     Serial.print(average1, 4);
     Serial.print(" кг ");
-    Serial.print(Moment, 4);
+    Serial.print(Moment1, 4);
     Serial.print(" Н*м ");
-    Serial.print("Тяга: ");
+    Serial.print("     ");
+    Serial.print("Момент2: ");
     Serial.print(average2, 4);
+    Serial.print(" кг ");
+    Serial.print(Moment2, 4);
+    Serial.print(" Н*м ");
+    Serial.print("    ");
+    Serial.print("Тяга: ");
+    Serial.print(thrust, 4);
     Serial.print(" кг ");
     Serial.print("Об/мин: ");
     Serial.print(rpm, 4);
